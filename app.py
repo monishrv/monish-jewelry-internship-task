@@ -78,4 +78,49 @@ def update_product(product_id):
     db.session.commit()
     return jsonify(product.to_dict())
 
-@app.route('/products/<int:product_id>',
+@app.route('/products/<int:product_id>', methods=['DELETE'])
+def delete_product(product_id):
+    if not verify_admin():
+        return jsonify({"error": "Unauthorized"}), 401
+
+    product = Product.query.get(product_id)
+    if not product:
+        return jsonify({"error": "Product not found"}), 404
+
+    db.session.delete(product)
+    db.session.commit()
+    return jsonify({"message": "Product deleted"})
+
+@app.route('/search', methods=['GET'])
+def search_products():
+    search = request.args.get('q', '').strip()
+    category = request.args.get('category', '').strip()
+    min_price = request.args.get('min_price', type=float)
+    max_price = request.args.get('max_price', type=float)
+    in_stock_only = request.args.get('in_stock', 'false').lower() == 'true'
+
+    query = Product.query
+
+    if search:
+        query = query.filter(or_(
+            Product.name.ilike(f'%{search}%'),
+            Product.category.ilike(f'%{search}%')
+        ))
+
+    if category:
+        query = query.filter(Product.category.ilike(f'%{category}%'))
+
+    if min_price is not None:
+        query = query.filter(Product.price >= min_price)
+
+    if max_price is not None:
+        query = query.filter(Product.price <= max_price)
+
+    if in_stock_only:
+        query = query.filter(Product.stock > 0)
+
+    products = query.all()
+    return jsonify([p.to_dict() for p in products])
+
+if __name__ == '__main__':
+    app.run(debug=True)
