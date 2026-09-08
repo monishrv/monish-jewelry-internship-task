@@ -22,11 +22,21 @@ A REST API for managing a jewelry product catalog with CRUD operations, search a
 * Input validation
 * Proper HTTP status codes and error handling
 * Case-insensitive partial search
+* Pagination for product listing and search results
+
+## Design Decisions
+
+* **SQLite over PostgreSQL:** Chosen for zero-config setup and quick deployment, since this project doesn't need concurrent write-heavy traffic. Easy to swap to PostgreSQL later if scale demands it.
+* **Simple Bearer token over JWT:** Kept authentication lightweight since this is a single-admin system with no user roles or session expiry needs. A full JWT setup would add complexity without real benefit here.
+* **Images stored as comma-separated text:** SQLite doesn't support native array columns, so image URLs are joined into a single text field and split back into a list in the API response, avoiding the need for a separate images table.
+* **Pagination on list/search endpoints:** Added to keep response sizes manageable and reflect real-world API design, where returning an entire table at once doesn't scale.
+* **Case-insensitive search with partial matching:** Used case-insensitive pattern matching so search feels intuitive (e.g. `"ring"` matches `"Gold Ring"`) rather than requiring exact matches.
 
 ## Project Structure
 
 ```text
 monish-jewelry-internship-task/
+
 │
 ├── app.py
 ├── models.py
@@ -43,6 +53,7 @@ monish-jewelry-internship-task/
 
 ```bash
 git clone <your-repo-url>
+
 cd monish-jewelry-internship-task
 ```
 
@@ -64,6 +75,11 @@ venv\Scripts\activate
 
 ```bash
 python3 -m venv venv
+```
+
+Activate it:
+
+```bash
 source venv/bin/activate
 ```
 
@@ -119,6 +135,8 @@ The `/search` endpoint supports the following query parameters:
 | `min_price` | Minimum product price                   |
 | `max_price` | Maximum product price                   |
 | `in_stock`  | Return only products currently in stock |
+| `page`      | Page number                             |
+| `per_page`  | Number of products per page             |
 
 ### Search by Product Name
 
@@ -148,6 +166,18 @@ GET /search?min_price=20
 
 ```text
 GET /search?in_stock=true
+```
+
+### Pagination
+
+```text
+GET /products?page=1&per_page=10
+```
+
+or:
+
+```text
+GET /search?q=ring&page=2&per_page=5
 ```
 
 ### Combine Multiple Filters
@@ -245,6 +275,8 @@ Example response:
 ]
 ```
 
+With pagination, the response may also include pagination metadata depending on the implementation.
+
 ## Get Product by ID
 
 ```text
@@ -327,6 +359,7 @@ For example:
 
 ```text
 stock > 0  →  in_stock: true
+
 stock = 0  →  in_stock: false
 ```
 
@@ -338,6 +371,7 @@ The API handles common invalid requests and edge cases, including:
 * Invalid product data
 * Invalid price values
 * Invalid price ranges
+* Invalid pagination parameters
 * Product not found
 * Unauthorized requests
 * Empty search results
@@ -381,6 +415,12 @@ GET http://127.0.0.1:5000/search?q=ring&max_price=50
 GET http://127.0.0.1:5000/search?in_stock=true
 ```
 
+### Paginated Product List
+
+```text
+GET http://127.0.0.1:5000/products?page=1&per_page=10
+```
+
 ### Create a Product
 
 ```text
@@ -416,7 +456,6 @@ Possible future improvements include:
 * JWT-based authentication
 * Environment-based secret configuration
 * User registration and login
-* Pagination
 * Product sorting
 * Image upload support
 * PostgreSQL database
@@ -424,6 +463,8 @@ Possible future improvements include:
 * Frontend product catalog
 * Admin dashboard
 * Cloud deployment
+* Docker containerization
+* Automated testing and CI/CD
 
 ## Author
 
