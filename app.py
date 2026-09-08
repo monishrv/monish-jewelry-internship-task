@@ -22,6 +22,23 @@ def verify_admin():
     token = auth_header.split(' ')[1]
     return token == ADMIN_KEY
 
+def paginate(query):
+    page = request.args.get('page', 1, type=int)
+    limit = request.args.get('limit', 10, type=int)
+    if page < 1:
+        page = 1
+    if limit < 1 or limit > 100:
+        limit = 10
+    total = query.count()
+    items = query.offset((page - 1) * limit).limit(limit).all()
+    return {
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "total_pages": (total + limit - 1) // limit,
+        "products": [p.to_dict() for p in items]
+    }
+
 @app.route('/')
 def home():
     return {"message": "Product Catalog API is running"}
@@ -34,6 +51,12 @@ def create_product():
     data = request.get_json()
     if not data.get('name') or data.get('price') is None or not data.get('category'):
         return jsonify({"error": "name, price, and category are required"}), 400
+
+    if data.get('price') < 0:
+        return jsonify({"error": "price cannot be negative"}), 400
+
+    if data.get('stock', 0) < 0:
+        return jsonify({"error": "stock cannot be negative"}), 400
 
     product = Product(
         name=data['name'],
@@ -48,8 +71,8 @@ def create_product():
 
 @app.route('/products', methods=['GET'])
 def get_products():
-    products = Product.query.all()
-    return jsonify([p.to_dict() for p in products])
+    query = Product.query
+    return jsonify(paginate(query))
 
 @app.route('/products/<int:product_id>', methods=['GET'])
 def get_product(product_id):
@@ -68,6 +91,13 @@ def update_product(product_id):
         return jsonify({"error": "Product not found"}), 404
 
     data = request.get_json()
+
+    if 'price' in data and data['price'] < 0:
+        return jsonify({"error": "price cannot be negative"}), 400
+
+    if 'stock' in data and data['stock'] < 0:
+        return jsonify({"error": "stock cannot be negative"}), 400
+
     product.name = data.get('name', product.name)
     product.price = data.get('price', product.price)
     product.category = data.get('category', product.category)
@@ -98,6 +128,8 @@ def search_products():
     min_price = request.args.get('min_price', type=float)
     max_price = request.args.get('max_price', type=float)
     in_stock_only = request.args.get('in_stock', 'false').lower() == 'true'
+    sort_by = request.args.get('sort_by', '')
+    order = request.args.get('order', 'asc')
 
     query = Product.query
 
@@ -119,8 +151,11 @@ def search_products():
     if in_stock_only:
         query = query.filter(Product.stock > 0)
 
-    products = query.all()
-    return jsonify([p.to_dict() for p in products])
+    if sort_by in ['price', 'name', 'stock']:
+        column = getattr(Product, sort_by)
+        query = query.order_by(column.desc() if order == 'desc' else column.asc())
+
+    return jsonify(paginate(query))
 
 if __name__ == '__main__':
     app.run(debug=True)
