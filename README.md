@@ -1,477 +1,333 @@
-# Monish Jewelry Internship Task - Product Catalog API
+Monish Jewelry Product Catalog API
 
-A REST API for managing a jewelry product catalog with CRUD operations, search and filtering functionality, stock management, and admin authentication.
+A simple REST API for managing a jewelry product catalog. The API supports product CRUD operations, search and filtering, stock management, pagination, sorting, and basic admin authentication.
 
-## Tech Stack
+Live Demo
 
-* **Backend:** Python, Flask
-* **Database:** SQLite
-* **ORM:** SQLAlchemy
-* **API:** REST API with JSON
-* **Authentication:** Bearer Token
+https://monish-jewelry-internship-task.onrender.com
 
-## Features
+Features
 
-* Create, read, update, and delete products
-* Search products by name or category
-* Filter products by category
-* Filter products by price range
-* Filter products by stock availability
-* Automatic `in_stock` status
-* Admin authentication for product modifications
-* Input validation
-* Proper HTTP status codes and error handling
-* Case-insensitive partial search
-* Pagination for product listing and search results
+The API provides complete CRUD operations for products. Each product contains a name, price, category, images, and stock quantity.
 
-## Design Decisions
+Products can be searched by name or category and filtered by category, price range, and stock availability.
 
-* **SQLite over PostgreSQL:** Chosen for zero-config setup and quick deployment, since this project doesn't need concurrent write-heavy traffic. Easy to swap to PostgreSQL later if scale demands it.
-* **Simple Bearer token over JWT:** Kept authentication lightweight since this is a single-admin system with no user roles or session expiry needs. A full JWT setup would add complexity without real benefit here.
-* **Images stored as comma-separated text:** SQLite doesn't support native array columns, so image URLs are joined into a single text field and split back into a list in the API response, avoiding the need for a separate images table.
-* **Pagination on list/search endpoints:** Added to keep response sizes manageable and reflect real-world API design, where returning an entire table at once doesn't scale.
-* **Case-insensitive search with partial matching:** Used case-insensitive pattern matching so search feels intuitive (e.g. `"ring"` matches `"Gold Ring"`) rather than requiring exact matches.
+The API also supports pagination and sorting by price, name, or stock.
 
-## Project Structure
+Admin-only operations such as creating, updating, and deleting products are protected using Bearer token authentication.
 
-```text
+Input validation is included for required fields, negative prices, and negative stock values.
+
+The project also includes automated tests using pytest and a Postman collection for API testing.
+
+Tech Stack
+
+Python, Flask, Flask-SQLAlchemy, SQLite, Flask-CORS, python-dotenv, Gunicorn, Render, Postman, and pytest.
+
+Design Decisions
+
+SQLite
+
+SQLite was selected because the project is a small product catalog API and does not require a separate database server for local development. The database can be migrated to PostgreSQL or another production database in the future.
+
+SQLAlchemy
+
+SQLAlchemy provides a clean database abstraction and makes it easier to work with the Product model and database queries.
+
+Bearer Token Authentication
+
+Admin operations require an Authorization header using the Bearer token format. This provides a simple authentication mechanism suitable for the scope of this internship task.
+
+Pagination
+
+Pagination is supported using the page and limit query parameters so that the API does not need to return every product at once.
+
+Stock Management
+
+Stock is stored as an integer. The API automatically returns an in_stock field based on whether the stock quantity is greater than zero.
+
+Project Structure
+
 monish-jewelry-internship-task/
-
 │
 ├── app.py
 ├── models.py
+├── test_app.py
 ├── requirements.txt
+├── postman_collection.json
 ├── README.md
-└── .gitignore
-```
+├── .gitignore
 
-> `catalog.db` is created automatically when the application runs and is ignored by Git.
+The .env file is used locally for the admin secret and is excluded from Git using .gitignore.
 
-## Setup and Run Locally
+Running Locally
 
-### 1. Clone the repository
+Clone the repository:
 
-```bash
-git clone <your-repo-url>
-
+git clone https://github.com/monishrv/monish-jewelry-internship-task.git
 cd monish-jewelry-internship-task
-```
 
-### 2. Create a virtual environment
+Create a virtual environment:
 
-**Windows:**
-
-```bash
 python -m venv venv
-```
 
-Activate it:
+Activate the virtual environment on Windows:
 
-```bash
 venv\Scripts\activate
-```
 
-**Mac/Linux:**
+Install the dependencies:
 
-```bash
-python3 -m venv venv
-```
-
-Activate it:
-
-```bash
-source venv/bin/activate
-```
-
-### 3. Install dependencies
-
-```bash
 pip install -r requirements.txt
-```
 
-### 4. Run the application
+Create a .env file in the project root:
 
-```bash
+ADMIN_KEY=your-secret-key
+
+Start the application:
+
 python app.py
-```
 
 The API will be available at:
 
-```text
-http://127.0.0.1:5000/
-```
+http://127.0.0.1:5000
 
-## API Endpoints
+The database is created automatically when the application starts.
 
-### Public Endpoints
+API Endpoints
 
-These endpoints do not require authentication.
+Health Check
 
-| Method | Endpoint         | Description                |
-| ------ | ---------------- | -------------------------- |
-| GET    | `/`              | API health check           |
-| GET    | `/products`      | Get all products           |
-| GET    | `/products/<id>` | Get a product by ID        |
-| GET    | `/search`        | Search and filter products |
+GET /
 
-### Admin Endpoints
+Returns the current API status.
 
-These endpoints require authentication.
+Create Product
 
-| Method | Endpoint         | Description                |
-| ------ | ---------------- | -------------------------- |
-| POST   | `/products`      | Create a new product       |
-| PUT    | `/products/<id>` | Update an existing product |
-| DELETE | `/products/<id>` | Delete a product           |
+POST /products
 
-## Search and Filtering
+Requires admin authentication.
 
-The `/search` endpoint supports the following query parameters:
+Example request body:
 
-| Parameter   | Description                             |
-| ----------- | --------------------------------------- |
-| `q`         | Search by product name or category      |
-| `category`  | Filter by category                      |
-| `min_price` | Minimum product price                   |
-| `max_price` | Maximum product price                   |
-| `in_stock`  | Return only products currently in stock |
-| `page`      | Page number                             |
-| `per_page`  | Number of products per page             |
+{
+  "name": "Gold Ring",
+  "price": 2500,
+  "category": "Rings",
+  "images": [
+    "https://example.com/ring.jpg"
+  ],
+  "stock": 10
+}
 
-### Search by Product Name
+Get All Products
 
-```text
-GET /search?q=ring
-```
+GET /products
 
-### Filter by Category
+Optional pagination parameters:
 
-```text
-GET /search?category=Rings
-```
+?page=1&limit=10
 
-### Filter by Maximum Price
+Get Product by ID
 
-```text
-GET /search?max_price=50
-```
+GET /products/<id>
 
-### Filter by Minimum Price
+Returns a single product.
 
-```text
-GET /search?min_price=20
-```
+Update Product
 
-### Show Only In-Stock Products
+PUT /products/<id>
 
-```text
-GET /search?in_stock=true
-```
+Requires admin authentication.
 
-### Pagination
+Only the fields that need to be changed have to be included in the request.
 
-```text
-GET /products?page=1&per_page=10
-```
+Example:
+
+{
+  "price": 2800,
+  "stock": 8
+}
+
+Delete Product
+
+DELETE /products/<id>
+
+Requires admin authentication.
+
+Search and Filtering
+
+The search endpoint is:
+
+GET /search
+
+Search by product name or category:
+
+/search?q=ring
+
+Filter by category:
+
+/search?category=Rings
+
+Filter by minimum price:
+
+/search?min_price=1000
+
+Filter by maximum price:
+
+/search?max_price=5000
+
+Filter by price range:
+
+/search?min_price=1000&max_price=5000
+
+Filter by stock availability:
+
+/search?in_stock=true
 
 or:
 
-```text
-GET /search?q=ring&page=2&per_page=5
-```
+/search?in_stock=false
 
-### Combine Multiple Filters
+Search, filtering, pagination, and sorting can also be combined.
 
-```text
-GET /search?q=ring&category=Rings&max_price=100&in_stock=true
-```
+Sorting
 
-Search is **case-insensitive** and supports **partial matches**.
+Products can be sorted by price, name, or stock.
 
-## Authentication
+Sort by price:
 
-Product creation, updating, and deletion require administrator authentication.
+/search?sort_by=price
 
-The API currently uses a Bearer Token.
+Descending order:
+
+/search?sort_by=price&order=desc
+
+Other supported sorting fields are:
+
+sort_by=name
+sort_by=stock
+
+Authentication
+
+Admin-only endpoints require a Bearer token in the Authorization header.
 
 Example:
 
-```text
-Authorization: Bearer admin-secret-key-12345
-```
+Authorization: Bearer your-secret-key
 
-The authentication header must be included with POST, PUT, and DELETE requests.
+The protected endpoints are:
 
-GET requests are publicly accessible.
-
-## Create a Product
-
-### Request
-
-```text
 POST /products
-```
-
-### Headers
-
-```text
-Content-Type: application/json
-Authorization: Bearer admin-secret-key-12345
-```
-
-### Request Body
-
-```json
-{
-    "name": "Gold Ring",
-    "price": 45.99,
-    "category": "Rings",
-    "images": [
-        "img1.jpg",
-        "img2.jpg"
-    ],
-    "stock": 10
-}
-```
-
-### Example Response
-
-```json
-{
-    "id": 1,
-    "name": "Gold Ring",
-    "price": 45.99,
-    "category": "Rings",
-    "images": [
-        "img1.jpg",
-        "img2.jpg"
-    ],
-    "stock": 10,
-    "in_stock": true
-}
-```
-
-## Get All Products
-
-```text
-GET /products
-```
-
-Example response:
-
-```json
-[
-    {
-        "id": 1,
-        "name": "Gold Ring",
-        "price": 45.99,
-        "category": "Rings",
-        "images": [
-            "img1.jpg"
-        ],
-        "stock": 10,
-        "in_stock": true
-    }
-]
-```
-
-With pagination, the response may also include pagination metadata depending on the implementation.
-
-## Get Product by ID
-
-```text
-GET /products/1
-```
-
-Returns the product with the specified ID.
-
-If the product does not exist, the API returns:
-
-```json
-{
-    "error": "Product not found"
-}
-```
-
-## Update a Product
-
-### Request
-
-```text
 PUT /products/<id>
-```
-
-### Headers
-
-```text
-Content-Type: application/json
-Authorization: Bearer admin-secret-key-12345
-```
-
-### Example Request Body
-
-```json
-{
-    "price": 50.99,
-    "stock": 5
-}
-```
-
-Only the fields that need to be updated have to be provided.
-
-## Delete a Product
-
-### Request
-
-```text
 DELETE /products/<id>
-```
 
-### Headers
+Requests without valid authentication return:
 
-```text
-Authorization: Bearer admin-secret-key-12345
-```
-
-Example:
-
-```text
-DELETE /products/1
-```
-
-## Product Data Format
-
-Each product contains the following fields:
-
-| Field      | Description                         |
-| ---------- | ----------------------------------- |
-| `id`       | Unique product identifier           |
-| `name`     | Product name                        |
-| `price`    | Product price                       |
-| `category` | Product category                    |
-| `images`   | List of product image URLs/names    |
-| `stock`    | Available quantity                  |
-| `in_stock` | Automatically determined from stock |
-
-The `in_stock` field is automatically calculated based on the stock quantity.
-
-For example:
-
-```text
-stock > 0  →  in_stock: true
-
-stock = 0  →  in_stock: false
-```
-
-## Validation and Error Handling
-
-The API handles common invalid requests and edge cases, including:
-
-* Missing required fields
-* Invalid product data
-* Invalid price values
-* Invalid price ranges
-* Invalid pagination parameters
-* Product not found
-* Unauthorized requests
-* Empty search results
-* Out-of-stock products
-* Case-insensitive searches
-* Partial search matches
-
-### HTTP Status Codes
-
-| Status Code | Meaning                      |
-| ----------- | ---------------------------- |
-| `200`       | Successful request           |
-| `201`       | Product successfully created |
-| `400`       | Invalid request              |
-| `401`       | Unauthorized                 |
-| `404`       | Product not found            |
-
-## Example API Usage
-
-### Get All Products
-
-```text
-GET http://127.0.0.1:5000/products
-```
-
-### Search for Rings
-
-```text
-GET http://127.0.0.1:5000/search?q=ring
-```
-
-### Find Rings Under $50
-
-```text
-GET http://127.0.0.1:5000/search?q=ring&max_price=50
-```
-
-### Find In-Stock Products
-
-```text
-GET http://127.0.0.1:5000/search?in_stock=true
-```
-
-### Paginated Product List
-
-```text
-GET http://127.0.0.1:5000/products?page=1&per_page=10
-```
-
-### Create a Product
-
-```text
-POST http://127.0.0.1:5000/products
-```
-
-Headers:
-
-```text
-Content-Type: application/json
-Authorization: Bearer admin-secret-key-12345
-```
-
-Body:
-
-```json
 {
-    "name": "Gold Ring",
-    "price": 45.99,
-    "category": "Rings",
-    "images": [
-        "img1.jpg",
-        "img2.jpg"
-    ],
-    "stock": 10
+  "error": "Unauthorized"
 }
-```
 
-## Future Improvements
+Creating a Product
 
-Possible future improvements include:
+A product requires:
 
-* JWT-based authentication
-* Environment-based secret configuration
-* User registration and login
-* Product sorting
-* Image upload support
-* PostgreSQL database
-* Swagger/OpenAPI documentation
-* Frontend product catalog
-* Admin dashboard
-* Cloud deployment
-* Docker containerization
-* Automated testing and CI/CD
+name
+price
+category
 
-## Author
+The following fields are optional:
 
-**Monish**
+images
+stock
 
-B.Tech Computer Science and Engineering
+If stock is not provided, it defaults to 0.
 
-## License
+Stock Management
 
-This project was created as part of an internship task.
+The API automatically determines whether a product is in stock.
+
+For example, when:
+
+"stock": 5
+
+the response contains:
+
+"in_stock": true
+
+When:
+
+"stock": 0
+
+the response contains:
+
+"in_stock": false
+
+This allows out-of-stock products to be identified and filtered easily.
+
+Validation and Error Handling
+
+The API validates required product fields and prevents negative prices and negative stock values.
+
+For example, a negative price returns:
+
+{
+  "error": "Price cannot be negative"
+}
+
+A negative stock value returns:
+
+{
+  "error": "Stock cannot be negative"
+}
+
+Requests for products that do not exist return HTTP 404.
+
+Unauthorized admin requests return HTTP 401.
+
+Invalid or missing request data returns HTTP 400.
+
+Testing
+
+The project includes automated tests using pytest.
+
+Run the test suite with:
+
+pytest test_app.py -v
+
+The test suite covers the health endpoint, product creation, authentication, validation, product lookup, search, and deletion.
+
+Postman Collection
+
+A Postman collection is included in the repository:
+
+postman_collection.json
+
+It can be imported into Postman to test the API endpoints.
+
+For local testing, the collection uses:
+
+base_url = http://127.0.0.1:5000
+
+The admin authentication token should be configured using the Postman environment rather than hardcoded into individual requests.
+
+Deployment
+
+The API is deployed on Render using Gunicorn.
+
+Live API:
+
+https://monish-jewelry-internship-task.onrender.com
+
+The application uses environment variables for the admin secret in the deployed environment.
+
+Future Improvements
+
+The project can be extended with PostgreSQL for a production database, stronger authentication such as JWT, image upload and storage, product categories as separate database entities, rate limiting, API documentation using OpenAPI or Swagger, and a frontend product catalog.
+
+Author
+
+Monish R V
+
+GitHub:
+
+https://github.com/monishrv/monish-jewelry-internship-task
